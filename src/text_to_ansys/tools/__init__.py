@@ -7,6 +7,7 @@ from text_to_ansys.tools.case_tools import (
     generate_apdl,
     inspect_case,
     render_displacement,
+    render_result,
     run_case,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "generate_apdl",
     "inspect_case",
     "render_displacement",
+    "render_result",
     "run_case",
 ]

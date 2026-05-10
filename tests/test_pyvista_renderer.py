@@ -55,6 +55,64 @@ def test_render_displacement_with_fake_reader(tmp_path: Path) -> None:
     assert Path(result.artifacts["screenshot"]).exists()
 
 
+def test_render_result_supports_stress_von_mises(tmp_path: Path) -> None:
+    manager = CaseManager(tmp_path)
+    case = manager.create_case(cantilever_beam_example(), slug="cantilever")
+    rst_path = case.case_dir / "text_to_ansys.rst"
+    rst_path.write_text("fake rst", encoding="utf-8")
+    calls = {}
+
+    class FakeResult:
+        def plot_nodal_stress(self, *args, **kwargs):
+            calls["args"] = args
+            calls["kwargs"] = kwargs
+            Path(kwargs["screenshot"]).write_text("png placeholder", encoding="utf-8")
+            return []
+
+    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: FakeResult())
+    result = renderer.render_result(case.case_id, field="stress", component="von_mises")
+
+    assert result.status == "success"
+    assert "stress" in result.message
+    assert calls["args"] == (0,)
+    assert calls["kwargs"]["comp"] == "EQV"
+    assert result.artifacts["screenshot"].endswith("stress_von_mises.png")
+
+
+def test_render_result_supports_directional_displacement(tmp_path: Path) -> None:
+    manager = CaseManager(tmp_path)
+    case = manager.create_case(cantilever_beam_example(), slug="cantilever")
+    rst_path = case.case_dir / "text_to_ansys.rst"
+    rst_path.write_text("fake rst", encoding="utf-8")
+    calls = {}
+
+    class FakeResult:
+        def plot_nodal_displacement(self, *args, **kwargs):
+            calls["kwargs"] = kwargs
+            Path(kwargs["screenshot"]).write_text("png placeholder", encoding="utf-8")
+            return []
+
+    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: FakeResult())
+    result = renderer.render_result(case.case_id, field="disp", component="y")
+
+    assert result.status == "success"
+    assert calls["kwargs"]["comp"] == "Y"
+    assert result.artifacts["screenshot"].endswith("disp_y.png")
+
+
+def test_render_result_rejects_invalid_component(tmp_path: Path) -> None:
+    manager = CaseManager(tmp_path)
+    case = manager.create_case(cantilever_beam_example(), slug="cantilever")
+    rst_path = case.case_dir / "text_to_ansys.rst"
+    rst_path.write_text("fake rst", encoding="utf-8")
+    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: None)
+
+    result = renderer.render_result(case.case_id, field="stress", component="norm")
+
+    assert result.status == "failed"
+    assert "Unsupported stress component" in result.diagnostics[0]
+
+
 def test_render_displacement_interactive_mode(tmp_path: Path) -> None:
     manager = CaseManager(tmp_path)
     case = manager.create_case(cantilever_beam_example(), slug="cantilever")

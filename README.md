@@ -60,13 +60,15 @@ python .\main.py run <case_id> --exec-file "C:\Path\To\MAPDL.exe"
 Render a displacement plot from the generated RST file:
 
 ```powershell
-python .\main.py render <case_id>
+python .\main.py render <case_id> --field disp --component norm
+python .\main.py render <case_id> --field disp --component y
+python .\main.py render <case_id> --field stress --component von_mises
 ```
 
 Open a local interactive PyVista window:
 
 ```powershell
-python .\main.py render <case_id> --interactive
+python .\main.py render <case_id> --field stress --component von_mises --interactive
 ```
 
 Run tests:

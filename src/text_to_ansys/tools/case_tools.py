@@ -71,22 +71,46 @@ def check_pyvista() -> dict[str, object]:
     return check_pyvista_runtime()
 
 
-def render_displacement(
+def render_result(
     case_id: str,
     *,
     cases_dir: str | Path = "cases",
     rst_path: str | Path | None = None,
-    component: str = "NORM",
+    field: str = "disp",
+    component: str = "norm",
     result_index: int = 0,
     displacement_factor: float = 1.0,
     interactive: bool = False,
 ) -> dict[str, object]:
     renderer = PyVistaRenderer(CaseManager(cases_dir))
-    return renderer.render_displacement(
+    return renderer.render_result(
         case_id,
         rst_path=rst_path,
+        field=field,
         result_index=result_index,
         component=component,
         displacement_factor=displacement_factor,
         interactive=interactive,
     ).to_json_dict()
+
+
+def render_displacement(
+    case_id: str,
+    *,
+    cases_dir: str | Path = "cases",
+    rst_path: str | Path | None = None,
+    component: str = "norm",
+    result_index: int = 0,
+    displacement_factor: float = 1.0,
+    interactive: bool = False,
+) -> dict[str, object]:
+    return render_result(
+        case_id,
+        cases_dir=cases_dir,
+        rst_path=rst_path,
+        field="disp",
+        component=component,
+        result_index=result_index,
+        displacement_factor=displacement_factor,
+        interactive=interactive,
+    )

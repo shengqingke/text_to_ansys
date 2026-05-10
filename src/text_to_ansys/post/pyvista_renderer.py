@@ -8,6 +8,23 @@ from typing import Any, Callable, Dict, Optional
 from text_to_ansys.runtime import CaseManager
 
 
+FIELD_COMPONENTS = {
+    "disp": {"norm": "NORM", "x": "X", "y": "Y", "z": "Z"},
+    "stress": {
+        "x": "X",
+        "y": "Y",
+        "z": "Z",
+        "xy": "XY",
+        "yz": "YZ",
+        "xz": "XZ",
+        "eqv": "EQV",
+        "von_mises": "EQV",
+        "von-mises": "EQV",
+        "mises": "EQV",
+    },
+}
+
+
 @dataclass(frozen=True)
 class PyVistaRenderResult:
     status: str
@@ -50,11 +67,44 @@ class PyVistaRenderer:
         displacement_factor: float = 1.0,
         interactive: bool = False,
     ) -> PyVistaRenderResult:
+        return self.render_result(
+            case_id,
+            rst_path=rst_path,
+            field="disp",
+            component=component,
+            result_index=result_index,
+            show_displacement=show_displacement,
+            displacement_factor=displacement_factor,
+            interactive=interactive,
+        )
+
+    def render_result(
+        self,
+        case_id: str,
+        *,
+        rst_path: str | Path | None = None,
+        field: str = "disp",
+        component: str = "norm",
+        result_index: int = 0,
+        show_displacement: bool = True,
+        displacement_factor: float = 1.0,
+        interactive: bool = False,
+    ) -> PyVistaRenderResult:
         case_dir = self.manager.case_dir(case_id).resolve()
         selected_rst = Path(rst_path).resolve() if rst_path else self._find_rst(case_dir)
         plots_dir = case_dir / "results" / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
-        screenshot_path = plots_dir / f"displacement_{component.lower()}.png"
+        try:
+            normalized_field, normalized_component, pyansys_component = self._normalize_render_request(field, component)
+        except ValueError as exc:
+            return PyVistaRenderResult(
+                status="failed",
+                case_id=case_id,
+                message="Invalid render request.",
+                artifacts={"plots_dir": str(plots_dir)},
+                diagnostics=[str(exc)],
+            )
+        screenshot_path = plots_dir / f"{normalized_field}_{normalized_component}.png"
 
         if selected_rst is None:
             return PyVistaRenderResult(
@@ -76,10 +126,11 @@ class PyVistaRenderer:
         try:
             read_binary = self._read_binary_func or self._load_read_binary()
             result = read_binary(str(selected_rst))
+            plot_method = self._plot_method(result, normalized_field)
             screenshot = None if interactive else str(screenshot_path)
-            result.plot_nodal_displacement(
+            plot_method(
                 result_index,
-                comp=component,
+                comp=pyansys_component,
                 show_displacement=show_displacement,
                 displacement_factor=displacement_factor,
                 off_screen=not interactive,
@@ -95,9 +146,9 @@ class PyVistaRenderer:
                 status="success",
                 case_id=case_id,
                 message=(
-                    "Opened interactive PyVista displacement plot."
+                    f"Opened interactive PyVista {normalized_field} plot."
                     if interactive
-                    else "Rendered displacement plot with PyVista."
+                    else f"Rendered {normalized_field} plot with PyVista."
                 ),
                 artifacts=artifacts,
                 diagnostics=[],
@@ -131,6 +182,29 @@ class PyVistaRenderer:
         except ImportError as exc:
             raise ImportError("Could not import ansys.mapdl.reader.") from exc
         return pymapdl_reader.read_binary
+
+    def _normalize_render_request(self, field: str, component: str) -> tuple[str, str, str]:
+        normalized_field = field.strip().lower()
+        if normalized_field in {"displacement", "u"}:
+            normalized_field = "disp"
+        if normalized_field not in FIELD_COMPONENTS:
+            raise ValueError(f"Unsupported field {field!r}. Supported fields: disp, stress.")
+
+        normalized_component = component.strip().lower()
+        if normalized_component not in FIELD_COMPONENTS[normalized_field]:
+            supported = ", ".join(sorted(FIELD_COMPONENTS[normalized_field]))
+            raise ValueError(f"Unsupported {normalized_field} component {component!r}. Supported components: {supported}.")
+        pyansys_component = FIELD_COMPONENTS[normalized_field][normalized_component]
+        if normalized_field == "stress" and pyansys_component == "EQV":
+            normalized_component = "von_mises"
+        return normalized_field, normalized_component, pyansys_component
+
+    def _plot_method(self, result: Any, field: str) -> Callable[..., Any]:
+        if field == "disp":
+            return result.plot_nodal_displacement
+        if field == "stress":
+            return result.plot_nodal_stress
+        raise ValueError(f"Unsupported field: {field}")
 
 
 def _module_available(name: str) -> bool:

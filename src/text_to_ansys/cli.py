@@ -7,7 +7,7 @@ from pathlib import Path
 from text_to_ansys.interactive import run_interactive
 from text_to_ansys.runtime import CaseManager
 from text_to_ansys.schema import cantilever_beam_example
-from text_to_ansys.tools import check_mapdl, check_pyvista, create_case_from_text, render_displacement, run_case
+from text_to_ansys.tools import check_mapdl, check_pyvista, create_case_from_text, render_result, run_case
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,10 +36,15 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("check-mapdl", help="Check whether PyMAPDL is importable without launching MAPDL.")
 
-    render = subparsers.add_parser("render", help="Render an RST displacement plot with PyVista.")
+    render = subparsers.add_parser("render", help="Render an RST result plot with PyVista.")
     render.add_argument("case_id")
     render.add_argument("--rst-path", help="Optional explicit RST path. Defaults to the first RST in the case.")
-    render.add_argument("--component", default="NORM", help="Displacement component, for example NORM, X, Y, or Z.")
+    render.add_argument("--field", default="disp", choices=["disp", "displacement", "u", "stress"], help="Result field to render.")
+    render.add_argument(
+        "--component",
+        default="norm",
+        help="Component, for example disp: norm/x/y/z or stress: x/y/z/xy/yz/xz/von_mises.",
+    )
     render.add_argument("--result-index", type=int, default=0)
     render.add_argument("--displacement-factor", type=float, default=1.0)
     render.add_argument("--interactive", action="store_true", help="Open a local interactive PyVista window instead of saving only a PNG.")
@@ -92,10 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "render":
         print(
             json.dumps(
-                render_displacement(
+                render_result(
                     args.case_id,
                     cases_dir=Path(args.cases_dir),
                     rst_path=args.rst_path,
+                    field=args.field,
                     component=args.component,
                     result_index=args.result_index,
                     displacement_factor=args.displacement_factor,
