@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List
 
 from text_to_ansys.builders import APDLBuildResult, StaticStructuralBuilder
 from text_to_ansys.schema import SimulationSpec
@@ -83,6 +84,33 @@ class CaseManager:
             "apdl_path": str(apdl_path),
         }
 
+    def list_cases(self) -> List[Dict[str, Any]]:
+        cases: List[Dict[str, Any]] = []
+        for path in sorted(self.cases_dir.iterdir()):
+            if not path.is_dir() or not (path / "simulation_spec.json").exists():
+                continue
+            try:
+                info = self.inspect_case(path.name)
+            except Exception:
+                continue
+            status = self._read_case_status(path)
+            cases.append(
+                {
+                    "case_id": info["case_id"],
+                    "title": info["title"],
+                    "status": status,
+                    "has_apdl": info["has_apdl"],
+                    "case_dir": info["case_dir"],
+                }
+            )
+        return cases
+
+    def read_apdl(self, case_id: str) -> str:
+        apdl_path = self.case_dir(case_id) / "input.apdl"
+        if not apdl_path.exists():
+            raise FileNotFoundError(f"APDL has not been generated for case: {case_id}")
+        return apdl_path.read_text(encoding="utf-8")
+
     def case_dir(self, case_id: str) -> Path:
         path = self.cases_dir / case_id
         if not path.exists():
@@ -121,3 +149,11 @@ class CaseManager:
         spec = self.load_spec(case_id)
         (case_dir / "case.yaml").write_text(self._case_yaml(case_id=case_id, spec=spec, status=status), encoding="utf-8")
 
+    def _read_case_status(self, case_dir: Path) -> str:
+        case_yaml = case_dir / "case.yaml"
+        if not case_yaml.exists():
+            return "unknown"
+        for line in case_yaml.read_text(encoding="utf-8").splitlines():
+            if line.startswith("status:"):
+                return line.split(":", 1)[1].strip()
+        return "unknown"

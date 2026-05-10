@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from text_to_ansys.interactive import run_interactive
 from text_to_ansys.runtime import CaseManager
 from text_to_ansys.schema import cantilever_beam_example
 
@@ -22,6 +23,8 @@ def main(argv: list[str] | None = None) -> int:
 
     inspect = subparsers.add_parser("inspect", help="Print case summary as JSON.")
     inspect.add_argument("case_id")
+
+    subparsers.add_parser("interactive", help="Start a basic interactive shell.")
 
     args = parser.parse_args(argv)
     manager = CaseManager(Path(args.cases_dir))
@@ -43,10 +46,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(manager.inspect_case(args.case_id), indent=2))
         return 0
 
+    if args.command == "interactive":
+        return run_interactive(Path(args.cases_dir))
+
     parser.error(f"unknown command: {args.command}")
     return 2
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
