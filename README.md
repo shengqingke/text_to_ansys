@@ -39,6 +39,18 @@ Generate APDL for an existing case:
 python .\main.py build <case_id>
 ```
 
+Check whether the PyMAPDL Python package is available without launching MAPDL:
+
+```powershell
+python .\main.py check-mapdl
+```
+
+Run a built case with PyMAPDL after you have confirmed your Ansys/MAPDL setup:
+
+```powershell
+python .\main.py run <case_id> --exec-file "C:\Path\To\MAPDL.exe"
+```
+
 Run tests:
 
 ```powershell

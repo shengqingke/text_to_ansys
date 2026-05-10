@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from text_to_ansys.parser import parse_text_to_spec
-from text_to_ansys.runtime import CaseManager
+from text_to_ansys.runtime import CaseManager, MapdlExecutor, MapdlRuntimeConfig, check_mapdl_runtime
 from text_to_ansys.schema import SimulationSpec, cantilever_beam_example
 
 
@@ -48,3 +48,19 @@ def generate_apdl(case_id: str, *, cases_dir: str | Path = "cases") -> dict[str,
 
 def inspect_case(case_id: str, *, cases_dir: str | Path = "cases") -> dict[str, object]:
     return CaseManager(cases_dir).inspect_case(case_id)
+
+
+def check_mapdl() -> dict[str, object]:
+    return check_mapdl_runtime()
+
+
+def run_case(
+    case_id: str,
+    *,
+    cases_dir: str | Path = "cases",
+    exec_file: str | None = None,
+    jobname: str = "text_to_ansys",
+) -> dict[str, object]:
+    manager = CaseManager(cases_dir)
+    executor = MapdlExecutor(manager, MapdlRuntimeConfig(exec_file=exec_file, jobname=jobname))
+    return executor.run_case(case_id).to_json_dict()

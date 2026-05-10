@@ -149,6 +149,9 @@ class CaseManager:
         spec = self.load_spec(case_id)
         (case_dir / "case.yaml").write_text(self._case_yaml(case_id=case_id, spec=spec, status=status), encoding="utf-8")
 
+    def update_status(self, case_id: str, status: str) -> None:
+        self._update_status(case_id, status)
+
     def _read_case_status(self, case_dir: Path) -> str:
         case_yaml = case_dir / "case.yaml"
         if not case_yaml.exists():

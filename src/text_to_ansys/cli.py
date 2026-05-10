@@ -7,7 +7,7 @@ from pathlib import Path
 from text_to_ansys.interactive import run_interactive
 from text_to_ansys.runtime import CaseManager
 from text_to_ansys.schema import cantilever_beam_example
-from text_to_ansys.tools import create_case_from_text
+from text_to_ansys.tools import check_mapdl, create_case_from_text, run_case
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,6 +28,13 @@ def main(argv: list[str] | None = None) -> int:
 
     inspect = subparsers.add_parser("inspect", help="Print case summary as JSON.")
     inspect.add_argument("case_id")
+
+    run = subparsers.add_parser("run", help="Run a generated APDL case with PyMAPDL.")
+    run.add_argument("case_id")
+    run.add_argument("--exec-file", help="Explicit MAPDL executable path. No path is guessed automatically.")
+    run.add_argument("--jobname", default="text_to_ansys")
+
+    subparsers.add_parser("check-mapdl", help="Check whether PyMAPDL is importable without launching MAPDL.")
 
     subparsers.add_parser("interactive", help="Start a basic interactive shell.")
 
@@ -53,6 +60,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "inspect":
         print(json.dumps(manager.inspect_case(args.case_id), indent=2))
+        return 0
+
+    if args.command == "check-mapdl":
+        print(json.dumps(check_mapdl(), indent=2))
+        return 0
+
+    if args.command == "run":
+        print(
+            json.dumps(
+                run_case(args.case_id, cases_dir=Path(args.cases_dir), exec_file=args.exec_file, jobname=args.jobname),
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "interactive":
