@@ -60,7 +60,7 @@ class MapdlExecutor:
         self._launch_mapdl_func = launch_mapdl_func
 
     def run_case(self, case_id: str) -> RunResult:
-        case_dir = self.manager.case_dir(case_id)
+        case_dir = self.manager.case_dir(case_id).resolve()
         apdl_path = case_dir / "input.apdl"
         if not apdl_path.exists():
             result = RunResult(
@@ -97,7 +97,7 @@ class MapdlExecutor:
             launch_kwargs.update(self.config.additional_launch_kwargs)
 
             mapdl = launch_mapdl(**launch_kwargs)
-            output = mapdl.input(str(apdl_path))
+            output = mapdl.input("input.apdl")
             stdout_path.write_text(str(output), encoding="utf-8")
 
             elapsed = time.perf_counter() - start

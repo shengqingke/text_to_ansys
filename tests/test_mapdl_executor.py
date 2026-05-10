@@ -49,14 +49,14 @@ def test_run_case_success_with_fake_mapdl(tmp_path: Path) -> None:
 
     class FakeMapdl:
         def input(self, path: str) -> str:
-            assert path.endswith("input.apdl")
+            assert path == "input.apdl"
             return "fake MAPDL output"
 
         def exit(self) -> None:
             exits.append(True)
 
     def fake_launch_mapdl(**kwargs):
-        assert kwargs["run_location"] == str(case.case_dir)
+        assert kwargs["run_location"] == str(case.case_dir.resolve())
         assert kwargs["jobname"] == "unit_test_job"
         return FakeMapdl()
 
@@ -73,4 +73,3 @@ def test_run_case_success_with_fake_mapdl(tmp_path: Path) -> None:
 
     run_json = json.loads((case.case_dir / "run.json").read_text(encoding="utf-8"))
     assert run_json["status"] == "success"
-
