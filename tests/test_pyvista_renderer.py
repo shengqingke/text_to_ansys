@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import numpy as np
+import pyvista as pv
+
 from text_to_ansys.post import PyVistaRenderer, check_pyvista_runtime
 from text_to_ansys.runtime import CaseManager
 from text_to_ansys.schema import cantilever_beam_example
@@ -62,20 +65,53 @@ def test_render_result_supports_stress_von_mises(tmp_path: Path) -> None:
     rst_path.write_text("fake rst", encoding="utf-8")
     calls = {}
 
-    class FakeResult:
-        def plot_nodal_stress(self, *args, **kwargs):
-            calls["args"] = args
-            calls["kwargs"] = kwargs
-            Path(kwargs["screenshot"]).write_text("png placeholder", encoding="utf-8")
-            return []
+    grid = pv.PolyData(np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]))
+    grid.point_data["ansys_node_num"] = np.array([10, 20])
 
-    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: FakeResult())
+    class FakePlotter:
+        def __init__(self, **kwargs):
+            calls["plotter_kwargs"] = kwargs
+
+        def add_mesh(self, grid, **kwargs):
+            calls["grid"] = grid
+            calls["mesh_kwargs"] = kwargs
+
+        def set_background(self, color):
+            calls["background"] = color
+
+        def add_axes(self):
+            calls["axes"] = True
+
+        def show(self, **kwargs):
+            calls["show_kwargs"] = kwargs
+            Path(kwargs["screenshot"]).write_text("png placeholder", encoding="utf-8")
+
+    class FakeResult:
+        def __init__(self):
+            self.grid = grid
+
+        def nodal_stress(self, rnum):
+            calls["stress_rnum"] = rnum
+            stress = np.array(
+                [
+                    [10.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 5.0, 0.0, 0.0],
+                ]
+            )
+            return np.array([10, 20]), stress
+
+        def nodal_displacement(self, rnum):
+            return np.array([10, 20]), np.zeros((2, 3))
+
+    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: FakeResult(), plotter_factory=FakePlotter)
     result = renderer.render_result(case.case_id, field="stress", component="von_mises")
 
     assert result.status == "success"
     assert "stress" in result.message
-    assert calls["args"] == (0,)
-    assert calls["kwargs"]["comp"] == "EQV"
+    assert calls["stress_rnum"] == 0
+    assert calls["plotter_kwargs"]["off_screen"] is True
+    assert calls["mesh_kwargs"]["scalars"] == "von_mises"
+    assert np.allclose(calls["grid"].point_data["von_mises"], np.array([10.0, np.sqrt(75.0)]))
     assert result.artifacts["screenshot"].endswith("stress_von_mises.png")
 
 

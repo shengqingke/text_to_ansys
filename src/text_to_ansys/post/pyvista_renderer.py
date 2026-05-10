@@ -17,10 +17,10 @@ FIELD_COMPONENTS = {
         "xy": "XY",
         "yz": "YZ",
         "xz": "XZ",
-        "eqv": "EQV",
-        "von_mises": "EQV",
-        "von-mises": "EQV",
-        "mises": "EQV",
+        "eqv": "VON_MISES",
+        "von_mises": "VON_MISES",
+        "von-mises": "VON_MISES",
+        "mises": "VON_MISES",
     },
 }
 
@@ -52,9 +52,11 @@ class PyVistaRenderer:
         manager: CaseManager,
         *,
         read_binary_func: Optional[Callable[[str], Any]] = None,
+        plotter_factory: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.manager = manager
         self._read_binary_func = read_binary_func
+        self._plotter_factory = plotter_factory
 
     def render_displacement(
         self,
@@ -126,19 +128,29 @@ class PyVistaRenderer:
         try:
             read_binary = self._read_binary_func or self._load_read_binary()
             result = read_binary(str(selected_rst))
-            plot_method = self._plot_method(result, normalized_field)
             screenshot = None if interactive else str(screenshot_path)
-            plot_method(
-                result_index,
-                comp=pyansys_component,
-                show_displacement=show_displacement,
-                displacement_factor=displacement_factor,
-                off_screen=not interactive,
-                interactive=interactive,
-                screenshot=screenshot,
-                background="white",
-                show_edges=True,
-            )
+            if normalized_field == "stress" and pyansys_component == "VON_MISES":
+                self._plot_von_mises(
+                    result,
+                    result_index=result_index,
+                    screenshot=screenshot,
+                    show_displacement=show_displacement,
+                    displacement_factor=displacement_factor,
+                    interactive=interactive,
+                )
+            else:
+                plot_method = self._plot_method(result, normalized_field)
+                plot_method(
+                    result_index,
+                    comp=pyansys_component,
+                    show_displacement=show_displacement,
+                    displacement_factor=displacement_factor,
+                    off_screen=not interactive,
+                    interactive=interactive,
+                    screenshot=screenshot,
+                    background="white",
+                    show_edges=True,
+                )
             artifacts = {"rst": str(selected_rst)}
             if not interactive:
                 artifacts["screenshot"] = str(screenshot_path)
@@ -195,7 +207,7 @@ class PyVistaRenderer:
             supported = ", ".join(sorted(FIELD_COMPONENTS[normalized_field]))
             raise ValueError(f"Unsupported {normalized_field} component {component!r}. Supported components: {supported}.")
         pyansys_component = FIELD_COMPONENTS[normalized_field][normalized_component]
-        if normalized_field == "stress" and pyansys_component == "EQV":
+        if normalized_field == "stress" and pyansys_component == "VON_MISES":
             normalized_component = "von_mises"
         return normalized_field, normalized_component, pyansys_component
 
@@ -205,6 +217,67 @@ class PyVistaRenderer:
         if field == "stress":
             return result.plot_nodal_stress
         raise ValueError(f"Unsupported field: {field}")
+
+    def _plot_von_mises(
+        self,
+        result: Any,
+        *,
+        result_index: int,
+        screenshot: Optional[str],
+        show_displacement: bool,
+        displacement_factor: float,
+        interactive: bool,
+    ) -> None:
+        try:
+            import numpy as np
+            import pyvista as pv
+        except ImportError as exc:
+            raise ImportError("Could not import numpy/pyvista for von Mises rendering.") from exc
+
+        node_numbers, stress = result.nodal_stress(result_index)
+        stress = np.asarray(stress, dtype=float)
+        if stress.ndim != 2 or stress.shape[1] < 6:
+            raise ValueError("nodal_stress must return an array with columns X, Y, Z, XY, YZ, XZ.")
+
+        sx, sy, sz, txy, tyz, txz = stress[:, 0], stress[:, 1], stress[:, 2], stress[:, 3], stress[:, 4], stress[:, 5]
+        von_mises = np.sqrt(
+            0.5 * ((sx - sy) ** 2 + (sy - sz) ** 2 + (sz - sx) ** 2)
+            + 3.0 * (txy**2 + tyz**2 + txz**2)
+        )
+
+        grid = result.grid.copy()
+        if len(von_mises) != grid.number_of_points:
+            mapped = np.full(grid.number_of_points, np.nan)
+            grid_node_numbers = grid.point_data.get("ansys_node_num")
+            if grid_node_numbers is None:
+                raise ValueError("Result grid is missing point_data['ansys_node_num']; cannot map von Mises values.")
+            index_by_node = {int(node): index for index, node in enumerate(grid_node_numbers)}
+            for stress_index, node in enumerate(node_numbers):
+                grid_index = index_by_node.get(int(node))
+                if grid_index is not None:
+                    mapped[grid_index] = von_mises[stress_index]
+            von_mises = mapped
+
+        if show_displacement:
+            _, displacement = result.nodal_displacement(result_index)
+            displacement = np.asarray(displacement, dtype=float)
+            if len(displacement) == grid.number_of_points:
+                grid.points = grid.points + displacement[:, :3] * displacement_factor
+
+        grid.point_data["von_mises"] = von_mises
+        plotter_factory = self._plotter_factory or pv.Plotter
+        plotter = plotter_factory(off_screen=not interactive)
+        plotter.add_mesh(
+            grid,
+            scalars="von_mises",
+            show_edges=True,
+            cmap="jet",
+            scalar_bar_args={"title": "Von Mises\nStress"},
+            nan_color="white",
+        )
+        plotter.set_background("white")
+        plotter.add_axes()
+        plotter.show(interactive=interactive, screenshot=screenshot, auto_close=True)
 
 
 def _module_available(name: str) -> bool:
