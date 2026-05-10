@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from text_to_ansys.parser import parse_text_to_spec
+from text_to_ansys.post import PyVistaRenderer, check_pyvista_runtime
 from text_to_ansys.runtime import CaseManager, MapdlExecutor, MapdlRuntimeConfig, check_mapdl_runtime
 from text_to_ansys.schema import SimulationSpec, cantilever_beam_example
 
@@ -64,3 +65,26 @@ def run_case(
     manager = CaseManager(cases_dir)
     executor = MapdlExecutor(manager, MapdlRuntimeConfig(exec_file=exec_file, jobname=jobname))
     return executor.run_case(case_id).to_json_dict()
+
+
+def check_pyvista() -> dict[str, object]:
+    return check_pyvista_runtime()
+
+
+def render_displacement(
+    case_id: str,
+    *,
+    cases_dir: str | Path = "cases",
+    rst_path: str | Path | None = None,
+    component: str = "NORM",
+    result_index: int = 0,
+    displacement_factor: float = 1.0,
+) -> dict[str, object]:
+    renderer = PyVistaRenderer(CaseManager(cases_dir))
+    return renderer.render_displacement(
+        case_id,
+        rst_path=rst_path,
+        result_index=result_index,
+        component=component,
+        displacement_factor=displacement_factor,
+    ).to_json_dict()

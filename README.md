@@ -45,10 +45,22 @@ Check whether the PyMAPDL Python package is available without launching MAPDL:
 python .\main.py check-mapdl
 ```
 
+Check whether optional PyVista rendering imports are available:
+
+```powershell
+python .\main.py check-pyvista
+```
+
 Run a built case with PyMAPDL after you have confirmed your Ansys/MAPDL setup:
 
 ```powershell
 python .\main.py run <case_id> --exec-file "C:\Path\To\MAPDL.exe"
+```
+
+Render a displacement plot from the generated RST file:
+
+```powershell
+python .\main.py render <case_id>
 ```
 
 Run tests:

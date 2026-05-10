@@ -7,7 +7,7 @@ from pathlib import Path
 from text_to_ansys.interactive import run_interactive
 from text_to_ansys.runtime import CaseManager
 from text_to_ansys.schema import cantilever_beam_example
-from text_to_ansys.tools import check_mapdl, create_case_from_text, run_case
+from text_to_ansys.tools import check_mapdl, check_pyvista, create_case_from_text, render_displacement, run_case
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,6 +35,15 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--jobname", default="text_to_ansys")
 
     subparsers.add_parser("check-mapdl", help="Check whether PyMAPDL is importable without launching MAPDL.")
+
+    render = subparsers.add_parser("render", help="Render an RST displacement plot with PyVista.")
+    render.add_argument("case_id")
+    render.add_argument("--rst-path", help="Optional explicit RST path. Defaults to the first RST in the case.")
+    render.add_argument("--component", default="NORM", help="Displacement component, for example NORM, X, Y, or Z.")
+    render.add_argument("--result-index", type=int, default=0)
+    render.add_argument("--displacement-factor", type=float, default=1.0)
+
+    subparsers.add_parser("check-pyvista", help="Check optional PyVista rendering imports without reading RST files.")
 
     subparsers.add_parser("interactive", help="Start a basic interactive shell.")
 
@@ -66,10 +75,30 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(check_mapdl(), indent=2))
         return 0
 
+    if args.command == "check-pyvista":
+        print(json.dumps(check_pyvista(), indent=2))
+        return 0
+
     if args.command == "run":
         print(
             json.dumps(
                 run_case(args.case_id, cases_dir=Path(args.cases_dir), exec_file=args.exec_file, jobname=args.jobname),
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.command == "render":
+        print(
+            json.dumps(
+                render_displacement(
+                    args.case_id,
+                    cases_dir=Path(args.cases_dir),
+                    rst_path=args.rst_path,
+                    component=args.component,
+                    result_index=args.result_index,
+                    displacement_factor=args.displacement_factor,
+                ),
                 indent=2,
             )
         )

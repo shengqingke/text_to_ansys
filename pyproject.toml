@@ -19,6 +19,10 @@ dev = [
 mapdl = [
   "ansys-mapdl-core>=0.68",
 ]
+viz = [
+  "pyvista>=0.44",
+  "ansys-mapdl-reader>=0.53",
+]
 
 [project.scripts]
 text-to-ansys = "text_to_ansys.cli:main"
