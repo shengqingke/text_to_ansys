@@ -48,6 +48,7 @@ class PyVistaRenderer:
         component: str = "NORM",
         show_displacement: bool = True,
         displacement_factor: float = 1.0,
+        interactive: bool = False,
     ) -> PyVistaRenderResult:
         case_dir = self.manager.case_dir(case_id).resolve()
         selected_rst = Path(rst_path).resolve() if rst_path else self._find_rst(case_dir)
@@ -75,22 +76,30 @@ class PyVistaRenderer:
         try:
             read_binary = self._read_binary_func or self._load_read_binary()
             result = read_binary(str(selected_rst))
+            screenshot = None if interactive else str(screenshot_path)
             result.plot_nodal_displacement(
                 result_index,
                 comp=component,
                 show_displacement=show_displacement,
                 displacement_factor=displacement_factor,
-                off_screen=True,
-                interactive=False,
-                screenshot=str(screenshot_path),
+                off_screen=not interactive,
+                interactive=interactive,
+                screenshot=screenshot,
                 background="white",
                 show_edges=True,
             )
+            artifacts = {"rst": str(selected_rst)}
+            if not interactive:
+                artifacts["screenshot"] = str(screenshot_path)
             return PyVistaRenderResult(
                 status="success",
                 case_id=case_id,
-                message="Rendered displacement plot with PyVista.",
-                artifacts={"rst": str(selected_rst), "screenshot": str(screenshot_path)},
+                message=(
+                    "Opened interactive PyVista displacement plot."
+                    if interactive
+                    else "Rendered displacement plot with PyVista."
+                ),
+                artifacts=artifacts,
                 diagnostics=[],
             )
         except ImportError as exc:
@@ -129,4 +138,3 @@ def _module_available(name: str) -> bool:
         return importlib.util.find_spec(name) is not None
     except ModuleNotFoundError:
         return False
-

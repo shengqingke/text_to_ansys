@@ -54,3 +54,25 @@ def test_render_displacement_with_fake_reader(tmp_path: Path) -> None:
     assert calls["kwargs"]["displacement_factor"] == 2.0
     assert Path(result.artifacts["screenshot"]).exists()
 
+
+def test_render_displacement_interactive_mode(tmp_path: Path) -> None:
+    manager = CaseManager(tmp_path)
+    case = manager.create_case(cantilever_beam_example(), slug="cantilever")
+    rst_path = case.case_dir / "text_to_ansys.rst"
+    rst_path.write_text("fake rst", encoding="utf-8")
+    calls = {}
+
+    class FakeResult:
+        def plot_nodal_displacement(self, *args, **kwargs):
+            calls["kwargs"] = kwargs
+            return []
+
+    renderer = PyVistaRenderer(manager, read_binary_func=lambda path: FakeResult())
+    result = renderer.render_displacement(case.case_id, interactive=True)
+
+    assert result.status == "success"
+    assert "interactive" in result.message
+    assert calls["kwargs"]["off_screen"] is False
+    assert calls["kwargs"]["interactive"] is True
+    assert calls["kwargs"]["screenshot"] is None
+    assert "screenshot" not in result.artifacts

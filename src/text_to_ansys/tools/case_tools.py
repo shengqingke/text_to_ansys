@@ -79,6 +79,7 @@ def render_displacement(
     component: str = "NORM",
     result_index: int = 0,
     displacement_factor: float = 1.0,
+    interactive: bool = False,
 ) -> dict[str, object]:
     renderer = PyVistaRenderer(CaseManager(cases_dir))
     return renderer.render_displacement(
@@ -87,4 +88,5 @@ def render_displacement(
         result_index=result_index,
         component=component,
         displacement_factor=displacement_factor,
+        interactive=interactive,
     ).to_json_dict()

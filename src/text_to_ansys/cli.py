@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     render.add_argument("--component", default="NORM", help="Displacement component, for example NORM, X, Y, or Z.")
     render.add_argument("--result-index", type=int, default=0)
     render.add_argument("--displacement-factor", type=float, default=1.0)
+    render.add_argument("--interactive", action="store_true", help="Open a local interactive PyVista window instead of saving only a PNG.")
 
     subparsers.add_parser("check-pyvista", help="Check optional PyVista rendering imports without reading RST files.")
 
@@ -98,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                     component=args.component,
                     result_index=args.result_index,
                     displacement_factor=args.displacement_factor,
+                    interactive=args.interactive,
                 ),
                 indent=2,
             )

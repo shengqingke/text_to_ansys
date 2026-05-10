@@ -63,6 +63,12 @@ Render a displacement plot from the generated RST file:
 python .\main.py render <case_id>
 ```
 
+Open a local interactive PyVista window:
+
+```powershell
+python .\main.py render <case_id> --interactive
+```
+
 Run tests:
 
 ```powershell
