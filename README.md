@@ -15,22 +15,28 @@ Real PyMAPDL execution and result extraction are planned after the first stable 
 
 ## MVP Quick Start
 
+From the repository root, start the basic interactive shell:
+
+```powershell
+python .\main.py interactive
+```
+
 Create a cantilever beam example case and generate APDL:
 
 ```powershell
-python -m text_to_ansys.cli create-example cantilever --build
+python .\main.py create-example cantilever --build
 ```
 
 Inspect the generated case:
 
 ```powershell
-python -m text_to_ansys.cli inspect <case_id>
+python .\main.py inspect <case_id>
 ```
 
 Generate APDL for an existing case:
 
 ```powershell
-python -m text_to_ansys.cli build <case_id>
+python .\main.py build <case_id>
 ```
 
 Run tests:
@@ -51,4 +57,3 @@ Supported in the first MVP:
 - fixed support on a selected face
 - force on a selected face, distributed across selected nodes
 - APDL generation and case persistence
-
