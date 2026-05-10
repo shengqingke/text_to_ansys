@@ -143,31 +143,46 @@ class StaticStructuralBuilder(BaseAPDLBuilder):
     def _select_target(self, target: TargetSpec, spec: SimulationSpec) -> list[str]:
         if target.selector == "nodes":
             return [f"CMSEL,S,{target.expression}"]
-        axis, value = self._parse_location_expression(target.expression, spec)
-        return [
-            "ALLSEL,ALL",
-            f"NSEL,S,LOC,{axis},{self._num(value)}",
-        ]
+        locations = self._parse_location_expressions(target.expression, spec)
+        lines = ["ALLSEL,ALL"]
+        for index, (axis, value) in enumerate(locations):
+            mode = "S" if index == 0 else "R"
+            lines.append(f"NSEL,{mode},LOC,{axis},{self._num(value)}")
+        return lines
+
+    def _parse_location_expressions(self, expression: str, spec: SimulationSpec) -> list[tuple[str, float]]:
+        parts = [part.strip() for part in expression.split(",") if part.strip()]
+        if not parts:
+            raise ValueError("target expression must not be empty")
+        return [self._parse_location_expression(part, spec) for part in parts]
 
     def _parse_location_expression(self, expression: str, spec: SimulationSpec) -> tuple[str, float]:
-        match = re.fullmatch(r"\s*([xyzXYZ])\s*=\s*([A-Za-z_][A-Za-z0-9_]*|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*", expression)
+        match = re.fullmatch(r"\s*([xyzXYZ])\s*=\s*(.+?)\s*", expression)
         if not match:
             raise ValueError(f"unsupported target expression: {expression!r}")
-
         axis = match.group(1).upper()
-        raw_value = match.group(2)
+        raw_value = match.group(2).strip()
+        return axis, self._evaluate_geometry_value(raw_value, spec)
+
+    def _evaluate_geometry_value(self, raw_value: str, spec: SimulationSpec) -> float:
         value_map = {
             "length": spec.geometry.parameters["length"],
             "width": spec.geometry.parameters["width"],
             "height": spec.geometry.parameters["height"],
         }
         if raw_value in value_map:
-            return axis, value_map[raw_value]
+            return value_map[raw_value]
+        for name, value in value_map.items():
+            if raw_value == f"{name}/2":
+                return value / 2.0
+            if raw_value == f"0.5*{name}":
+                return 0.5 * value
+            if raw_value == f"{name}*0.5":
+                return value * 0.5
         try:
-            return axis, float(raw_value)
+            return float(raw_value)
         except ValueError as exc:
             raise ValueError(f"unknown target expression value: {raw_value!r}") from exc
 
     def _num(self, value: float) -> str:
         return f"{value:.12g}"
-

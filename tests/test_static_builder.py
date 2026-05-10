@@ -1,5 +1,5 @@
 from text_to_ansys.builders import StaticStructuralBuilder
-from text_to_ansys.schema import cantilever_beam_example
+from text_to_ansys.schema import BoundaryConditionSpec, LoadSpec, TargetSpec, cantilever_beam_example
 
 
 def test_static_builder_generates_expected_apdl_sections() -> None:
@@ -26,3 +26,24 @@ def test_static_builder_records_required_outputs() -> None:
 
     assert result.required_outputs == ["max_total_displacement", "max_von_mises_stress"]
 
+
+def test_static_builder_supports_compound_location_targets() -> None:
+    spec = cantilever_beam_example()
+    spec.boundary_conditions.append(
+        BoundaryConditionSpec(
+            kind="fixed_support",
+            target=TargetSpec(selector="face", expression="x=length"),
+        )
+    )
+    spec.loads[0] = LoadSpec(
+        kind="force",
+        target=TargetSpec(selector="face", expression="x=length/2,z=height"),
+        direction="Y",
+        value=-100.0,
+    )
+
+    script = StaticStructuralBuilder().build(spec).script
+
+    assert "NSEL,S,LOC,X,0.5" in script
+    assert "NSEL,R,LOC,Z,0.1" in script
+    assert "F,ALL,FY,FEACH1" in script
