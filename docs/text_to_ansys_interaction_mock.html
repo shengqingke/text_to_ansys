@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Text-to-Ansys Interaction Mock</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --line: #d8dee8;
+      --text: #18202f;
+      --muted: #677286;
+      --accent: #176b87;
+      --accent-2: #2d8f74;
+      --danger: #b83939;
+      --warning: #a16a00;
+      --code: #121826;
+      --code-text: #d8e2f1;
+      --shadow: 0 12px 32px rgba(24, 32, 47, 0.08);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: 56px 1fr;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: white;
+      background: var(--accent);
+      font-size: 14px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-2);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.9fr) minmax(560px, 1.4fr);
+      gap: 18px;
+      padding: 18px;
+      min-height: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .chat {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title h1,
+    .panel-title h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .messages {
+      padding: 18px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .message {
+      max-width: 88%;
+      border-radius: 8px;
+      padding: 12px 13px;
+      font-size: 14px;
+      line-height: 1.55;
+      border: 1px solid var(--line);
+    }
+
+    .user {
+      align-self: flex-end;
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .assistant {
+      align-self: flex-start;
+      background: var(--panel-2);
+    }
+
+    .tool-call {
+      align-self: flex-start;
+      width: 92%;
+      border: 1px solid #c7d8dc;
+      background: #eef7f8;
+      color: #24444c;
+      border-radius: 8px;
+      padding: 11px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .tool-call strong {
+      color: #163840;
+    }
+
+    .composer {
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      background: var(--panel-2);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    textarea {
+      min-height: 46px;
+      max-height: 120px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--text);
+      background: white;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      padding: 0 16px;
+      font: inherit;
+      font-weight: 650;
+      cursor: default;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      min-height: 0;
+    }
+
+    .case-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 12px 18px 0;
+      background: white;
+    }
+
+    .tab {
+      padding: 8px 11px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      color: var(--muted);
+      background: var(--panel-2);
+      font-size: 13px;
+    }
+
+    .tab.active {
+      color: var(--text);
+      background: white;
+      font-weight: 700;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 1.1fr) minmax(260px, 0.8fr);
+      gap: 16px;
+      padding: 18px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      border-radius: 8px;
+      background: var(--code);
+      color: var(--code-text);
+      overflow: auto;
+      min-height: 430px;
+      font: 13px/1.55 "Cascadia Code", Consolas, monospace;
+    }
+
+    .side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      overflow: hidden;
+    }
+
+    .mini-card h3 {
+      margin: 0;
+      padding: 12px 13px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 12px;
+      padding: 12px 13px;
+      font-size: 13px;
+    }
+
+    .kv span {
+      color: var(--muted);
+    }
+
+    .kv strong {
+      text-align: right;
+    }
+
+    .timeline {
+      padding: 12px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .check,
+    .warn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 11px;
+      margin-top: 1px;
+    }
+
+    .check {
+      background: var(--accent-2);
+    }
+
+    .warn {
+      background: var(--warning);
+    }
+
+    .viewer {
+      height: 174px;
+      border-top: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(23, 107, 135, 0.12), rgba(45, 143, 116, 0.10)),
+        repeating-linear-gradient(90deg, transparent 0 28px, rgba(24, 32, 47, 0.05) 29px 30px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .beam {
+      position: absolute;
+      left: 28px;
+      right: 38px;
+      top: 76px;
+      height: 36px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #2d8f74 0%, #75b66b 50%, #d6b03e 78%, #b83939 100%);
+      box-shadow: 0 12px 24px rgba(24, 32, 47, 0.22);
+      transform: skewY(-3deg);
+    }
+
+    .clamp {
+      position: absolute;
+      left: 18px;
+      top: 56px;
+      width: 16px;
+      height: 76px;
+      border-radius: 3px;
+      background: #5b6472;
+    }
+
+    .load-arrow {
+      position: absolute;
+      right: 42px;
+      top: 28px;
+      color: var(--danger);
+      font-weight: 800;
+      font-size: 34px;
+    }
+
+    .legend {
+      position: absolute;
+      left: 28px;
+      right: 28px;
+      bottom: 16px;
+      height: 8px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #2d8f74, #75b66b, #d6b03e, #b83939);
+    }
+
+    @media (max-width: 980px) {
+      main,
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .case-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">AP</div>
+        <div>Text-to-Ansys APDL</div>
+      </div>
+      <div class="status-bar">
+        <span class="dot"></span>
+        <span>MAPDL connected</span>
+        <span class="pill">case: cantilever_v2</span>
+        <span class="pill">SI</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel chat">
+        <div class="panel-title">
+          <h1>对话</h1>
+          <span class="pill">static structural</span>
+        </div>
+
+        <div class="messages">
+          <div class="message user">
+            创建一个 1m 长、50mm 宽、100mm 高的钢悬臂梁，左端固定，右端向下 1000N，使用 SOLID186，网格 20mm。
+          </div>
+
+          <div class="tool-call">
+            <strong>create_case_from_text</strong><br />
+            生成 simulation_spec.json，识别为静力结构分析，单位 SI，材料 steel，几何 block beam。
+          </div>
+
+          <div class="tool-call">
+            <strong>generate_apdl</strong><br />
+            生成 input.apdl，并标记右端面载荷将转换为节点等效力。
+          </div>
+
+          <div class="tool-call">
+            <strong>run_case</strong><br />
+            MAPDL 求解完成，用时 18.4s，生成 job.rst、job.out、result_summary.json。
+          </div>
+
+          <div class="message assistant">
+            已完成。最大总位移为 3.42 mm，位于自由端附近；最大 von Mises 应力为 185 MPa，出现在固定端根部。当前结果低于普通结构钢屈服强度 250 MPa，但固定端应力集中需要进一步关注。
+          </div>
+
+          <div class="message user">
+            把网格尺寸改成 10mm 再跑一次，并和上一版对比。
+          </div>
+
+          <div class="tool-call">
+            <strong>update_case_from_text</strong><br />
+            基于 cantilever_v1 创建 cantilever_v2，mesh.global_size: 0.02 -> 0.01。
+          </div>
+
+          <div class="message assistant">
+            新版本已求解。最大位移变化约 1.8%，最大应力上升约 6.1%。这个趋势符合固定端应力集中在网格加密后更明显的预期。
+          </div>
+        </div>
+
+        <div class="composer">
+          <textarea>把材料换成 7075-T6 铝合金，保留 10mm 网格，再跑一次。</textarea>
+          <button>发送</button>
+        </div>
+      </section>
+
+      <section class="panel workspace">
+        <div class="panel-title">
+          <h2>当前 Case</h2>
+          <span class="pill">solved</span>
+        </div>
+
+        <div class="case-strip">
+          <div class="metric">
+            <span>分析类型</span>
+            <strong>Static Structural</strong>
+          </div>
+          <div class="metric">
+            <span>单元</span>
+            <strong>SOLID186</strong>
+          </div>
+          <div class="metric">
+            <span>网格尺寸</span>
+            <strong>0.01 m</strong>
+          </div>
+          <div class="metric">
+            <span>载荷</span>
+            <strong>FY = -1000 N</strong>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">APDL</div>
+          <div class="tab">Spec</div>
+          <div class="tab">Results</div>
+          <div class="tab">Logs</div>
+          <div class="tab">Compare</div>
+        </div>
+
+        <div class="content-grid">
+          <pre>/CLEAR
+/PREP7
+! Text-to-Ansys generated APDL
+! case: cantilever_v2
+
+ET,1,SOLID186
+MP,EX,1,2.1E11
+MP,PRXY,1,0.3
+DENS,7850
+
+BLOCK,0,1,0,0.05,0,0.1
+ESIZE,0.01
+VMESH,ALL
+
+NSEL,S,LOC,X,0
+D,ALL,ALL,0
+ALLSEL,ALL
+
+NSEL,S,LOC,X,1
+F,ALL,FY,-1000
+ALLSEL,ALL
+
+/SOLU
+ANTYPE,STATIC
+SOLVE
+FINISH
+
+/POST1
+SET,LAST
+PLNSOL,U,SUM
+PLNSOL,S,EQV</pre>
+
+          <aside class="side-stack">
+            <div class="mini-card">
+              <h3>结果摘要</h3>
+              <div class="kv">
+                <span>最大位移</span>
+                <strong>3.48 mm</strong>
+                <span>位置</span>
+                <strong>Node 2812</strong>
+                <span>最大等效应力</span>
+                <strong>196 MPa</strong>
+                <span>位置</span>
+                <strong>Elem 44</strong>
+                <span>相对 v1 位移</span>
+                <strong>+1.8%</strong>
+                <span>相对 v1 应力</span>
+                <strong>+6.1%</strong>
+              </div>
+              <div class="viewer">
+                <div class="clamp"></div>
+                <div class="beam"></div>
+                <div class="load-arrow">↓</div>
+                <div class="legend"></div>
+              </div>
+            </div>
+
+            <div class="mini-card">
+              <h3>执行时间线</h3>
+              <div class="timeline">
+                <div class="step">
+                  <div class="check">✓</div>
+                  <div>Spec 校验通过，未发现缺失材料或载荷字段。</div>
+                </div>
+                <div class="step">
+                  <div class="check">✓</div>
+                  <div>APDL 生成完成，保存到 cases/cantilever_v2/input.apdl。</div>
+                </div>
+                <div class="step">
+                  <div class="check">✓</div>
+                  <div>MAPDL 求解完成，RST 文件已归档。</div>
+                </div>
+                <div class="step">
+                  <div class="warn">!</div>
+                  <div>固定端存在应力集中，建议结合工程准则判断是否需要局部网格收敛检查。</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
