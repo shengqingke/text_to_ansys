@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text-to-ansys"
+version = "0.1.0"
+description = "Conversation-friendly Text-to-Ansys(APDL) automation toolkit."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+mapdl = [
+  "ansys-mapdl-core>=0.68",
+]
+
+[project.scripts]
+text-to-ansys = "text_to_ansys.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
